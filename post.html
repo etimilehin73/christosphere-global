@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Post - Christosphere</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Post</h1>
+    <nav>
+      <a href="index.html">Feed</a>
+      <a href="admin.html">Admin</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section id="post-detail" class="card">
+      <div id="loading">Loading...</div>
+    </section>
+    <section id="post-interact" class="card hidden">
+      <button id="like-btn">Like (<span id="like-count">0</span>)</button>
+      <hr>
+      <h3>Comments</h3>
+      <div id="comments-list"></div>
+      <form id="comment-form">
+        <label>Name <input id="comment-author" placeholder="Your name"></label>
+        <label>Comment <textarea id="comment-body" rows="3" required></textarea></label>
+        <div class="form-actions"><button type="submit">Post comment</button></div>
+      </form>
+      <div id="pending-note" class="card hidden">Your comment is pending moderation and will appear once approved by an admin.</div>
+    </section>
+    <a href="index.html" id="back-link" class="card">← Back to feed</a>
+  </main>
+
+  <script>
+  async function getQueryParam(name){
+    const params = new URLSearchParams(window.location.search);
+    return params.get(name);
+  }
+  async function loadPost(){
+    const id = await getQueryParam('id');
+    const container = document.getElementById('post-detail');
+    if(!id){ container.innerHTML = '<p>Missing post id</p>'; return; }
+    try{
+      const res = await fetch('/api/posts/' + encodeURIComponent(id));
+      if(!res.ok){ container.innerHTML = '<p>Post not found</p>'; return; }
+      const p = await res.json();
+      container.innerHTML = `
+        <h2>${escapeHtml(p.title)}</h2>
+        <div class="meta">${new Date(p.createdAt).toLocaleString()}</div>
+        <p>${escapeHtml(p.body)}</p>
+      `;
+    if(p.videoUrl){
+        if(/youtube.com|youtu.be/.test(p.videoUrl)){
+          const iframe = document.createElement('iframe');
+          iframe.src = (function(url){
+            const m = url.match(/(?:v=|v\/|embed\/|youtu\.be\/|watch\?v=)([A-Za-z0-9_-]{6,})/);
+            const id = m ? m[1] : '';
+            return id ? `https://www.youtube.com/embed/${id}` : url;
+          })(p.videoUrl);
+          iframe.width = '560'; iframe.height = '315'; iframe.setAttribute('frameborder','0'); iframe.setAttribute('allow','accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'); iframe.allowFullscreen = true;
+          container.appendChild(iframe);
+        } else {
+          const video = document.createElement('video');
+          video.controls = true; video.src = p.videoUrl; container.appendChild(video);
+        }
+      }
+      // likes and comments
+      const interact = document.getElementById('post-interact');
+      const likeCount = document.getElementById('like-count');
+      const likeBtn = document.getElementById('like-btn');
+      const commentsList = document.getElementById('comments-list');
+      const commentForm = document.getElementById('comment-form');
+      interact.classList.remove('hidden');
+      likeCount.textContent = p.likes || 0;
+      if(p.liked) likeBtn.classList.add('liked');
+      likeBtn.onclick = async ()=>{
+        const r = await fetch('/api/posts/' + encodeURIComponent(id) + '/like', { method: 'POST', credentials: 'include' });
+        if(r.ok){ const j=await r.json(); likeCount.textContent = j.likes; if(j.liked) likeBtn.classList.add('liked'); else likeBtn.classList.remove('liked'); }
+      };
+
+      async function loadComments(){
+        const r = await fetch('/api/posts/' + encodeURIComponent(id) + '/comments', { credentials: 'include' });
+        if(!r.ok) return; const arr = await r.json();
+        commentsList.innerHTML = '';
+        // check admin
+        const authRes = await fetch('/api/auth', { credentials: 'include' }); const auth = await authRes.json();
+        const isAdmin = !!auth.authed;
+        arr.forEach(c=>{
+          const div = document.createElement('div'); div.className='card';
+          div.innerHTML = `<strong>${escapeHtml(c.author)}</strong> <div class="meta">${new Date(c.createdAt).toLocaleString()}</div><p>${escapeHtml(c.body)}</p>`;
+          if(isAdmin){
+            const del = document.createElement('button'); del.textContent='Delete'; del.addEventListener('click', async ()=>{
+              if(!confirm('Delete this comment?')) return;
+              const r = await fetch('/api/comments/' + encodeURIComponent(c.id), { method: 'DELETE', credentials: 'include' });
+              if(r.ok) loadComments(); else alert('Delete failed');
+            });
+            div.appendChild(del);
+          } else {
+            // non-admins can flag
+            const flag = document.createElement('button'); flag.textContent='Flag'; flag.addEventListener('click', async ()=>{
+              const r = await fetch('/api/comments/' + encodeURIComponent(c.id) + '/flag', { method: 'POST' });
+              if(r.ok) alert('Flag submitted'); else alert('Flag failed');
+            });
+            div.appendChild(flag);
+          }
+          commentsList.appendChild(div);
+        });
+      }
+      loadComments();
+
+      commentForm.addEventListener('submit', async e=>{
+        e.preventDefault();
+        const author = document.getElementById('comment-author').value.trim();
+        const body = document.getElementById('comment-body').value.trim();
+        if(!body) return;
+        const r = await fetch('/api/posts/' + encodeURIComponent(id) + '/comments', { method: 'POST', headers: {'content-type':'application/json'}, body: JSON.stringify({ author, body }) });
+      if(r.ok){ const j=await r.json(); document.getElementById('comment-body').value = ''; document.getElementById('comment-author').value='';
+        if(j.approved===0){ document.getElementById('pending-note').classList.remove('hidden'); }
+        await loadComments(); }
+      });
+    }catch(e){ container.innerHTML = '<p>Error loading post</p>'; }
+  }
+
+  function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  window.addEventListener('DOMContentLoaded', loadPost);
+  </script>
+</body>
+</html>

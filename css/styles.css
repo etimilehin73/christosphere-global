@@ -1,0 +1,103 @@
+:root{
+  --bg:#f5f7fb;
+  --card:#fff;
+  --muted:#6b7280;
+  --accent:#2563eb;
+}
+*{
+    box-sizing:border-box
+}
+body{
+    font-family:Segoe UI, Roboto, system-ui, -apple-system, 'Helvetica Neue', Arial; 
+    margin:0;
+    background:var(--bg);
+    color:#111
+}
+.site-header{
+    background:linear-gradient(90deg,#0ea5e9, #2563eb);
+    color:#fff;
+    padding:1rem 1.25rem;
+    display:flex;
+    align-items:center;
+    justify-content:space-between
+}
+.site-header h1{
+    margin:0;
+    font-size:1.125rem
+}
+.site-header nav a{
+    color:#fff;
+    margin-left:1rem;
+    text-decoration:none
+}
+.container{
+    max-width:900px;
+    margin:1.25rem auto;
+    padding:0 1rem
+}
+.card{
+    background:var(--card);
+    padding:1rem;
+    border-radius:8px;
+    box-shadow:0 1px 4px rgba(16,24,40,0.06);
+    margin-bottom:1rem
+}
+.hidden{
+    display:none
+}
+.feed .post{
+    border-bottom:1px solid #eef2ff;
+    padding:1rem 0
+}
+.post h3{
+    margin:0 0 .5rem
+}
+.post p{
+    margin:0 0 .75rem;
+    color:var(--muted)
+}
+.post .meta{
+    font-size:.85rem;
+    color:var(--muted)
+}
+.post video, .post iframe{
+    max-width:100%;
+    height:auto;
+    border-radius:6px;
+    margin-top:.5rem
+}
+form label{
+    display:block;
+    margin-bottom:.75rem
+}
+input[type=text],input[type=url],input[type=password],textarea{
+    width:100%;
+    padding:.5rem;
+    border:1px solid #e6edf7;
+    border-radius:6px
+}
+.form-actions{
+    display:flex;
+    gap:.5rem;
+    margin-top:.5rem
+}
+button{
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    padding:.5rem .75rem;
+    border-radius:6px;
+    cursor:pointer
+}
+button[disabled]{
+    opacity:.6;
+    cursor:default
+}
+@media (max-width:560px){
+    .site-header{
+        padding:.75rem
+    }
+    .container{
+        padding:0 .75rem
+    }
+}

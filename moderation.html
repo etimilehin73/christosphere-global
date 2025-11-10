@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Moderation - Christosphere</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Moderation</h1>
+    <nav>
+      <a href="index.html">Feed</a>
+      <a href="admin.html">Admin</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>Unapproved Comments</h2>
+      <div id="moderation-list">Loading...</div>
+    </section>
+  </main>
+
+  <script>
+  async function loadModeration(){
+    const r = await fetch('/api/moderation/comments', { credentials: 'include' });
+    const list = document.getElementById('moderation-list');
+    if(!r.ok){ list.innerHTML = '<p>Failed to load — are you an admin?</p>'; return; }
+    const arr = await r.json();
+    if(arr.length===0){ list.innerHTML = '<p>No pending comments.</p>'; return; }
+    list.innerHTML = '';
+    arr.forEach(c=>{
+      const div = document.createElement('div'); div.className='card';
+      div.innerHTML = `<strong>${escapeHtml(c.author)}</strong> <div class="meta">${new Date(c.createdAt).toLocaleString()}</div><p>${escapeHtml(c.body)}</p>`;
+      const approve = document.createElement('button'); approve.textContent='Approve'; approve.addEventListener('click', async ()=>{ const r = await fetch('/api/comments/' + encodeURIComponent(c.id) + '/approve', { method: 'PUT', credentials: 'include' }); if(r.ok) loadModeration(); else alert('Approve failed'); });
+      const reject = document.createElement('button'); reject.textContent='Reject'; reject.addEventListener('click', async ()=>{ const r = await fetch('/api/comments/' + encodeURIComponent(c.id) + '/reject', { method: 'PUT', credentials: 'include' }); if(r.ok) loadModeration(); else alert('Reject failed'); });
+      div.appendChild(approve); div.appendChild(reject);
+      list.appendChild(div);
+    });
+  }
+  function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  window.addEventListener('DOMContentLoaded', loadModeration);
+  </script>
+</body>
+</html>
